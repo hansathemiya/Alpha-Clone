@@ -1,39 +1,52 @@
 import requests
 import argparse
 import webbrowser
+import getpass
+
+def display_startup_message():
+    ascii_art = """
+    AAAA     LLL      PPPPP    HHH   HHH    AAAA     CCCCCC   LLL        OOOOO    NNN    NNN  EEEEEEEE
+   AAAAA    LLL      PPPPPPP   HHH   HHH   AAAAAA   CCCCCCCC  LLL       OOOOOOO   NNNN   NNN  EEEEEEEE
+  AAA AAA   LLL      PPP  PPP  HHH   HHH  AAA  AAA CCC        LLL      OOO   OOO  NNNNN  NNN  EEE     
+ AAA   AAA  LLL      PPPPPPP   HHHHHHHHH AAAA  AAA CCC        LLL      OOO   OOO  NNNNNN NNN  EEEEE  
+ AAAAAAAAAA LLL      PPPPP     HHHHHHHHH AAAAAAAAA CCC        LLL      OOO   OOO  NNN NNNNNN  EEEEE  
+ AAA     AAA LLL      PPP       HHH   HHH AAA    AA CCC        LLL      OOO   OOO  NNN  NNNNN  EEE     
+ AAA     AAA LLLLLLLL PPP       HHH   HHH AAA    AAA CCCCCCCC  LLLLLLLL  OOOOOOO   NNN   NNNN  EEEEEEEE
+ AAA     AAA LLLLLLLL PPP       HHH   HHH AAA    AAA   CCCCCC   LLLLLLL    OOOOO    NNN    NNN  EEEEEEEE
+
+                                  By Hansa Themiya
+    """
+    print(ascii_art)
 
 def fetch_profile_data(url, platform):
-    # Platform-specific API endpoints or logic
     try:
         if platform == '1':
             api_url = f'https://api.instagram.com/v1/users/self/?access_token=ACCESS_TOKEN'
         elif platform == '2':
             api_url = f'https://graph.facebook.com/v11.0/{url}?access_token=ACCESS_TOKEN'
         elif platform == '3':
+            api_url = f'https://graph.facebook.com/v11.0/{url}?access_token=ACCESS_TOKEN'
+        elif platform == '4':
             api_url = f'https://api.linkedin.com/v2/me?projection=(id,firstName,lastName)'
         else:
             raise ValueError("Unsupported platform")
 
         response = requests.get(api_url)
-        response.raise_for_status()  # Raise HTTPError for bad responses
+        response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
         print(f"Error fetching profile data: {e}")
         print("A CAPTCHA challenge is likely required.")
         print("Opening the CAPTCHA challenge in your web browser...")
         
-        # Open a web browser for manual CAPTCHA completion
         webbrowser.open(api_url)
-
         input("After completing the CAPTCHA, press Enter to continue...")
 
-        # Retry the request after manual intervention
         response = requests.get(api_url)
         return response.json()
 
 def save_post_info_to_file(profile_data, filename):
     with open(filename, 'w') as file:
-        # Add profile photo link and follower/following lists
         file.write(f"Profile Photo: {profile_data['profile_picture']}\n")
         file.write(f"Following: {', '.join(profile_data['following'])}\n")
         file.write(f"Followers: {', '.join(profile_data['followers'])}\n\n")
@@ -50,7 +63,6 @@ def save_post_info_to_file(profile_data, filename):
 
 def perform_security_analysis(profile):
     vulnerabilities = []
-    # Analysis logic here
     return vulnerabilities
 
 def generate_report(vulnerabilities):
@@ -64,17 +76,12 @@ def clone_and_analyze_profile(url, platform, cloning_choice):
     profile_data = fetch_profile_data(url, platform)
     
     if cloning_choice == '1':
-        # Manual Cloning
         save_post_info_to_file(profile_data, 'post_info.txt')
     elif cloning_choice == '2':
-        # Automated Cloning
-        # Ask for Assassin account credentials
-        assassin_username = input("Enter the Assassin account username: ")
-        assassin_password = input("Enter the Assassin account password: ")
-        # Implement login and cloning logic here
+        assassin_username = input("Enter the Assassin account username or email: ")
+        assassin_password = getpass.getpass("Enter the Assassin account password: ")
         try:
-            # Placeholder for login logic
-            if False:  # Replace with actual login check
+            if False:
                 raise ValueError("Invalid credentials")
             vulnerabilities = perform_security_analysis(profile_data)
             report = generate_report(vulnerabilities)
@@ -89,18 +96,16 @@ def clone_and_analyze_profile(url, platform, cloning_choice):
         raise ValueError("Unsupported cloning choice")
 
 def main():
-    parser = argparse.ArgumentParser(description='ALPHA-CLONE: Clone and analyze public social media profiles.')
-    parser.add_argument('platform', help='Choose the social media platform: 1. Instagram, 2. Facebook, 3. LinkedIn')
-    parser.add_argument('url', help='URL or username of the public social media profile')
-    args = parser.parse_args()
+    display_startup_message()
 
-    print("Choose the social media platform:")
+    print("Choose the target platform:")
     print("1. Instagram")
-    print("2. Facebook")
-    print("3. LinkedIn")
+    print("2. Facebook Account")
+    print("3. Facebook Page")
+    print("4. LinkedIn Profile")
     platform_choice = input("Enter the number of your choice: ")
 
-    profile_url = input("Enter the profile URL or username: ")
+    profile_url = input("Enter the account URL or username: ")
 
     print("Choose the cloning method:")
     print("1. Manual Cloning")
