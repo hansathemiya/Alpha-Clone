@@ -1,7 +1,8 @@
 import requests
 import argparse
-import webbrowser
 import getpass
+import subprocess
+from bs4 import BeautifulSoup
 
 def display_startup_message():
     ascii_art = """
@@ -21,33 +22,54 @@ def display_startup_message():
 def fetch_profile_data(url, platform):
     try:
         if platform == '1':
-            api_url = f'https://api.instagram.com/v1/users/self/?access_token=ACCESS_TOKEN'
-        elif platform == '2':
-            api_url = f'https://graph.facebook.com/v11.0/{url}?access_token=ACCESS_TOKEN'
-        elif platform == '3':
-            api_url = f'https://graph.facebook.com/v11.0/{url}?access_token=ACCESS_TOKEN'
-        elif platform == '4':
-            api_url = f'https://api.linkedin.com/v2/me?projection=(id,firstName,lastName)'
+            # Using curl to fetch profile data
+            profile_username = url.split('/')[-1]
+            subprocess.run(['curl', '-L', f'https://www.instagram.com/{profile_username}/', '-o', 'profile.html'])
+            
+            with open('profile.html', 'r', encoding='utf-8') as file:
+                html_content = file.read()
+            
+            soup = BeautifulSoup(html_content, 'html.parser')
+            
+            profile_data = {
+                'profile_pic_url': soup.find('meta', property='og:image')['content'],
+                'posts': [],
+                'following': [],
+                'followers': []
+            }
+            
+            for script in soup.find_all('script', type='text/javascript'):
+                if 'window._sharedData = ' in script.string:
+                    shared_data = script.string.split('window._sharedData = ')[1].rstrip(';')
+                    shared_data = json.loads(shared_data)
+                    user_data = shared_data['entry_data']['ProfilePage'][0]['graphql']['user']
+                    
+                    profile_data['following'] = [edge['node']['username'] for edge in user_data['edge_follow']['edges']]
+                    profile_data['followers'] = [edge['node']['username'] for edge in user_data['edge_followed_by']['edges']]
+                    
+                    for edge in user_data['edge_owner_to_timeline_media']['edges']:
+                        post = edge['node']
+                        profile_data['posts'].append({
+                            'link': f"https://www.instagram.com/p/{post['shortcode']}/",
+                            'title': post['edge_media_to_caption']['edges'][0]['node']['text'] if post['edge_media_to_caption']['edges'] else 'N/A',
+                            'description': post['edge_media_to_caption']['edges'][0]['node']['text'] if post['edge_media_to_caption']['edges'] else 'N/A',
+                            'hashtags': [tag['name'] for tag in post['tags']],
+                            'tags': [tag['username'] for tag in post['tagged_users']],
+                            'location': post['location']['name'] if post['location'] else 'N/A'
+                        })
+                    break
+            return profile_data
         else:
-            raise ValueError("Unsupported platform")
-
-        response = requests.get(api_url)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
+            # Placeholder for other platforms
+            print("Only Instagram is supported in this example.")
+            return None
+    except Exception as e:
         print(f"Error fetching profile data: {e}")
-        print("A CAPTCHA challenge is likely required.")
-        print("Opening the CAPTCHA challenge in your web browser...")
-        
-        webbrowser.open(api_url)
-        input("After completing the CAPTCHA, press Enter to continue...")
-
-        response = requests.get(api_url)
-        return response.json()
+        return None
 
 def save_post_info_to_file(profile_data, filename):
     with open(filename, 'w') as file:
-        file.write(f"Profile Photo: {profile_data['profile_picture']}\n")
+        file.write(f"Profile Photo: {profile_data['profile_pic_url']}\n")
         file.write(f"Following: {', '.join(profile_data['following'])}\n")
         file.write(f"Followers: {', '.join(profile_data['followers'])}\n\n")
         
@@ -75,6 +97,10 @@ def generate_report(vulnerabilities):
 def clone_and_analyze_profile(url, platform, cloning_choice):
     profile_data = fetch_profile_data(url, platform)
     
+    if profile_data is None:
+        print("Failed to fetch profile data.")
+        return
+
     if cloning_choice == '1':
         save_post_info_to_file(profile_data, 'post_info.txt')
     elif cloning_choice == '2':
